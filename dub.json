@@ -1,0 +1,9 @@
+{
+    "name": "felix",
+    "authors": [
+        "Atila Neves"
+    ],
+    "description": "A minimal D application.",
+    "copyright": "Copyright © 2016, atila",
+    "license": "BSD 3 clause"
+}
