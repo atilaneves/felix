@@ -5,5 +5,17 @@
     ],
     "description": "A minimal D application.",
     "copyright": "Copyright © 2016, atila",
-    "license": "BSD 3 clause"
+    "license": "BSD 3 clause",
+    "targetPath": "bin",
+    "configurations": [
+        {"name": "unittest",
+         "targetType": "executable",
+         "sourcePaths": ["tests"],
+         "preBuildCommands": ["dub run unit-threaded -c gen_ut_main -- -f bin/ut.d"],
+         "mainSourceFile": "bin/ut.d",
+         "dependencies": {
+             "unit-threaded": "~>0.6.0"
+         }
+        }
+    ]
 }
