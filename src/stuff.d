@@ -1,52 +1,56 @@
 import std.traits;
 
 version(unittest) import unit_threaded;
+import std.variant;
 
 
 struct Maybe(T) {
 
-    alias Wrapped = T;
+    private alias SumType = Algebraic!(Just, Nothing);
+    private SumType _wrapped;
 
-    static struct Just {
+    private static struct Just {
         T value;
     }
 
-    static struct Nothing {}
+    private static struct Nothing {}
 
-    static auto return_(T)(T val) {
-        return Just(val);
+    static auto nothing() {
+        return Maybe(SumType(Nothing()));
+    }
+
+    static auto return_(T val) {
+        return Maybe(SumType(Just(val)));
     }
 }
 
-auto maybe(T)(T val) {
+auto just(T)(T val) {
     return Maybe!T.return_(val);
 }
 
 enum isMonad(alias T) = is(typeof(() {
     with(T!int) {
         auto m = return_(0);
-        m.bind!(a => a);
+        m.bind!(a => return_(a));
     }
 }));
 
-enum isMaybe(T) = is(T: Maybe!U.Just, U) || is(T: Maybe!U.Nothing, U);
+enum isMaybe(T) = is(T: Maybe!U, U);
 static assert(isMonad!Maybe);
 
-auto bind(alias F, T)(T monad) if(isMaybe!T) {
-    enum isNothing(T) = is(T: Maybe!U.Nothing, U);
-
-    static if(isNothing!T)
-        return T();
-    else
-        return T(F(monad.value));
+T bind(alias F, T)(T monad) if(isMaybe!T) {
+    return monad._wrapped.visit!(
+        (T.Nothing) => monad,
+        (T.Just j) => F(j.value));
 }
 
 
 @("Maybe int")
 unittest {
     with(Maybe!int) {
-        return_(5).bind!(a => a + 1).shouldEqual(maybe(6));
-        Nothing().bind!(a => a + 1).shouldEqual(Nothing());
+        return_(5).bind!(a => return_(a + 1)).shouldEqual(just(6));
+        nothing.bind!(a => return_(a + 1)).shouldEqual(nothing);
+        return_(8).bind!(a => nothing).bind!(a => return_(a + 1)).shouldEqual(nothing);
     }
 }
 
@@ -54,7 +58,8 @@ unittest {
 @("Maybe string")
 unittest {
     with(Maybe!string) {
-        return_("foo").bind!(a => a ~ "bar").shouldEqual(return_("foobar"));
-        Nothing().bind!(a => a ~ "bar").shouldEqual(Nothing());
+        return_("foo").bind!(a => return_(a ~ "bar")).shouldEqual(just("foobar"));
+        nothing.bind!(a => return_(a ~ "bar")).shouldEqual(nothing);
+        return_("foo").bind!(a => return_(a ~ "bar")).bind!(a => nothing).shouldEqual(nothing);
     }
 }
