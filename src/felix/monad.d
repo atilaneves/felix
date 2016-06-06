@@ -1,3 +1,5 @@
+module felix.monad;
+
 import std.traits;
 
 version(unittest) import unit_threaded;
@@ -83,8 +85,7 @@ enum isWriter(T) = is(T: Writer!(W, U), W, U);
 
 T bind(alias F, T)(T monad) if(isWriter!T) {
     auto res = F(monad.value);
-    res.writee = monad.writee ~ res.writee;
-    return res;
+    return writer(res.value, monad.writee ~ res.writee);
 }
 
 static assert(isMonad!(Writer, string));
@@ -93,7 +94,8 @@ static assert(isMonad!(Writer, string));
 unittest {
     import std.conv: to;
     with(Writer!(string, int)) {
-        return_(5).bind!(a => writer(a + 1, "a was " ~ a.to!string)).shouldEqual(writer(6, "a was 5"));
+        return_(5).bind!(a => writer(a + 1, "a was " ~ a.to!string)).bind!(a => writer(a + 2, ": but " ~ a.to!string)).
+            shouldEqual(writer(8, "a was 5: but 6"));
     }
 }
 
