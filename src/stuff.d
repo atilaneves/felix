@@ -28,8 +28,8 @@ auto just(T)(T val) {
     return Maybe!T.return_(val);
 }
 
-enum isMonad(alias T) = is(typeof(() {
-    with(T!int) {
+enum isMonad(alias T, U...) = is(typeof(() {
+    with(T!(U, int)) {
         auto m = return_(0);
         m.bind!(a => return_(a));
     }
@@ -61,5 +61,38 @@ unittest {
         return_("foo").bind!(a => return_(a ~ "bar")).shouldEqual(just("foobar"));
         nothing.bind!(a => return_(a ~ "bar")).shouldEqual(nothing);
         return_("foo").bind!(a => return_(a ~ "bar")).bind!(a => nothing).shouldEqual(nothing);
+    }
+}
+
+struct Writer(W, T) {
+    T value;
+    W writee;
+
+    static auto return_(T val) {
+        return Writer(val, W.init);
+    }
+
+    static assert(isWriter!(Writer!(string, int)));
+}
+
+auto writer(T, W)(T t, W w) {
+    return Writer!(W, T)(t, w);
+}
+
+enum isWriter(T) = is(T: Writer!(W, U), W, U);
+
+T bind(alias F, T)(T monad) if(isWriter!T) {
+    auto res = F(monad.value);
+    res.writee = monad.writee ~ res.writee;
+    return res;
+}
+
+static assert(isMonad!(Writer, string));
+
+@("Writer string")
+unittest {
+    import std.conv: to;
+    with(Writer!(string, int)) {
+        return_(5).bind!(a => writer(a + 1, "a was " ~ a.to!string)).shouldEqual(writer(6, "a was 5"));
     }
 }
