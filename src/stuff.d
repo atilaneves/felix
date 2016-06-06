@@ -96,3 +96,47 @@ unittest {
         return_(5).bind!(a => writer(a + 1, "a was " ~ a.to!string)).shouldEqual(writer(6, "a was 5"));
     }
 }
+
+import std.typecons;
+
+alias Stack = int[];
+
+
+struct State(S, A) {
+    alias StateType = S;
+    alias ValueType = A;
+
+    Tuple!(A, S) delegate(S state) runState;
+}
+
+struct Unit {}
+
+version(unittest) {
+    private auto pop() {
+        return State!(Stack, int)(a => tuple(a[0], a[1..$]));
+    }
+
+    private State!(Stack, Unit) push(int i) {
+        return State!(Stack, Unit)(a => tuple(Unit(), i ~ a));
+    }
+}
+
+enum isState(T) = is(T: State!(S, A), S, A);
+auto bind(alias F, T)(T monad) if(isState!T) {
+    alias Value = monad.ValueType;
+    alias NewValue = typeof(F(monad.runState(monad.StateType.init)[0])).ValueType;
+    alias NewState = State!(monad.StateType, NewValue);
+    return NewState((s) {
+        auto res = monad.runState(s);
+        auto a = res[0];
+        auto newState = res[1];
+        return F(a).runState(newState);
+    });
+}
+
+@("State stack") unittest {
+    with(State!(Stack, int)) {
+        auto stackManip = push(3).bind!(_ => pop).bind!(_ => pop);
+        stackManip.runState([5, 8, 2, 1]).shouldEqual(tuple(5, [8, 2, 1]));
+    }
+}
