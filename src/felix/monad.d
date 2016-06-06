@@ -74,6 +74,10 @@ struct Writer(W, T) {
         return Writer(val, W.init);
     }
 
+    auto runWriter() {
+        return tuple(value, writee);
+    }
+
     static assert(isWriter!(Writer!(string, int)));
 }
 
@@ -94,8 +98,8 @@ static assert(isMonad!(Writer, string));
 unittest {
     import std.conv: to;
     with(Writer!(string, int)) {
-        return_(5).bind!(a => writer(a + 1, "a was " ~ a.to!string)).bind!(a => writer(a + 2, ": but " ~ a.to!string)).
-            shouldEqual(writer(8, "a was 5: but 6"));
+        return_(5).bind!(a => writer(a + 1, "a was " ~ a.to!string)).bind!(a => writer(a + 2, ": but " ~ a.to!string)).runWriter().
+            shouldEqual(tuple(8, "a was 5: but 6"));
     }
 }
 
