@@ -4,6 +4,7 @@ import std.traits;
 
 version(unittest) import unit_threaded;
 import std.variant;
+import std.typecons;
 
 
 struct Maybe(T) {
@@ -103,10 +104,6 @@ unittest {
     }
 }
 
-import std.typecons;
-
-alias Stack = int[];
-
 
 struct State(S, A) {
     alias StateType = S;
@@ -116,16 +113,6 @@ struct State(S, A) {
 }
 
 struct Unit {}
-
-version(unittest) {
-    private auto pop() {
-        return State!(Stack, int)(a => tuple(a[0], a[1..$]));
-    }
-
-    private State!(Stack, Unit) push(int i) {
-        return State!(Stack, Unit)(a => tuple(Unit(), i ~ a));
-    }
-}
 
 enum isState(T) = is(T: State!(S, A), S, A);
 auto bind(alias F, T)(T monad) if(isState!T) {
@@ -141,6 +128,15 @@ auto bind(alias F, T)(T monad) if(isState!T) {
 }
 
 @("State stack") unittest {
+    alias Stack = int[];
+    auto pop() {
+        return State!(Stack, int)(a => tuple(a[0], a[1..$]));
+    }
+
+    State!(Stack, Unit) push(int i) {
+        return State!(Stack, Unit)(a => tuple(Unit(), i ~ a));
+    }
+
     with(State!(Stack, int)) {
         auto stackManip = push(3).bind!(_ => pop).bind!(_ => pop);
         stackManip.runState([5, 8, 2, 1]).shouldEqual(tuple(5, [8, 2, 1]));
